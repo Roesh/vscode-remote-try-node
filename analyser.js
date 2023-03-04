@@ -1,68 +1,78 @@
 "use strict";
-exports.__esModule = true;
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.summarizeProject = void 0;
+const tslib_1 = require("tslib");
 //@ts-nocheck
-var ts = require("typescript");
-// import * as fs from 'fs';
-var glob_1 = require("glob");
-function summarizeProject(projectPath) {
-    var components = [];
-    var services = [];
+const ts = tslib_1.__importStar(require("typescript"));
+const fs = tslib_1.__importStar(require("fs"));
+const glob_1 = require("glob");
+async function summarizeProject(projectPath) {
+    const components = [];
+    const services = [];
+    let numberOfClasses = 0;
+    let numberOfFunctions = 0;
     // Find all TypeScript files in the project
-    var fileNames = [];
-    (0, glob_1.glob)("".concat(projectPath, "/**/*.ts"), { ignore: "".concat(projectPath, "/node_modules/**") }).then(function (files) {
-        fileNames = files;
+    let fileNames;
+    // = ["ng-analysis/src/app/app.component.ts"]
+    fileNames = await (0, glob_1.glob)(`${projectPath}/**/*.ts`, { ignore: `${projectPath}/node_modules/**` });
+    console.log(fileNames, "Files to review");
+    // Build a program using the set of root file names in fileNames
+    let program = ts.createProgram(fileNames, {
+        target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS
     });
-    console.log(fileNames);
-    var _loop_1 = function (fileName) {
-        var filePath = "".concat(projectPath, "/").concat(fileName);
-        var sourceFile = ts.createSourceFile(filePath, fs.readFileSync(filePath).toString(), ts.ScriptTarget.ES2015, true);
+    // Get the checker, we will use it to find more about classes
+    let checker = program.getTypeChecker();
+    let decoratorFullText = "";
+    let decoratorName = "";
+    // Loop through each file and extract relevant information
+    for (const fileName of fileNames) {
+        const filePath = fileName;
+        const sourceFile = ts.createSourceFile(filePath, fs.readFileSync(filePath).toString(), ts.ScriptTarget.ES2022, true);
         // Extract component metadata
-        ts.forEachChild(sourceFile, function (node) {
-            var _a, _b, _c, _d;
-            if (ts.isClassDeclaration(node) && node.decorators) {
-                var decorator = node.decorators.find(function (d) { return d.expression.getText() === 'Component'; });
+        ts.forEachChild(sourceFile, node => {
+            if (ts.isClassDeclaration(node) && ts.canHaveDecorators(node)) {
+                const decorators = ts.getDecorators(node);
+                const decorator = decorators.find(d => {
+                    decoratorName = d.expression.expression.escapedText;
+                    return decoratorName === "Component";
+                });
                 if (decorator) {
-                    var metadata = ts.createCompilerHost({}).getMetadataForDecorators([decorator], sourceFile).pop();
+                    ;
                     components.push({
-                        name: node.name.getText(),
-                        selector: ((_a = metadata === null || metadata === void 0 ? void 0 : metadata.selector) === null || _a === void 0 ? void 0 : _a.text) || '',
-                        templateUrl: ((_b = metadata === null || metadata === void 0 ? void 0 : metadata.template) === null || _b === void 0 ? void 0 : _b.fileName) || '',
-                        styleUrls: ((_c = metadata === null || metadata === void 0 ? void 0 : metadata.styleUrls) === null || _c === void 0 ? void 0 : _c.map(function (url) { return url.text; })) || [],
-                        providers: ((_d = metadata === null || metadata === void 0 ? void 0 : metadata.providers) === null || _d === void 0 ? void 0 : _d.map(function (provider) { return provider.expression.getText(); })) || []
+                        name: decorator.parent.name.escapedText,
+                        // selector: metadata?.selector?.text || '',
+                        // templateUrl: metadata?.template?.fileName || '',
+                        // styleUrls: metadata?.styleUrls?.map(url => url.text) || [],
+                        // providers: metadata?.providers?.map(provider => provider.expression.getText()) || [],
                     });
                 }
             }
         });
         // Extract service metadata
-        ts.forEachChild(sourceFile, function (node) {
-            var _a;
-            if (ts.isClassDeclaration(node) && node.decorators) {
-                var decorator = node.decorators.find(function (d) { return d.expression.getText() === 'Injectable'; });
-                if (decorator) {
-                    var metadata = ts.createCompilerHost({}).getMetadataForDecorators([decorator], sourceFile).pop();
-                    services.push({
-                        name: node.name.getText(),
-                        providedIn: ((_a = metadata === null || metadata === void 0 ? void 0 : metadata.providedIn) === null || _a === void 0 ? void 0 : _a.getText()) || 'root'
-                    });
-                }
-            }
-        });
-    };
-    // Loop through each file and extract relevant information
-    for (var _i = 0, fileNames_1 = fileNames; _i < fileNames_1.length; _i++) {
-        var fileName = fileNames_1[_i];
-        _loop_1(fileName);
+        // ts.forEachChild(sourceFile, node => {
+        //     if (ts.isClassDeclaration(node) && node.decorators) {
+        //         const decorator = node.decorators.find(d => d.expression.getText() === 'Injectable');
+        //         if (decorator) {
+        //             const metadata = ts.createCompilerHost({}).getMetadataForDecorators([decorator], sourceFile).pop();
+        //             services.push({
+        //                 name: node.name.getText(),
+        //                 providedIn: metadata?.providedIn?.getText() || 'root',
+        //             });
+        //         }
+        //     }
+        // });
     }
-    return { components: components, services: services };
+    return { components, services };
 }
 exports.summarizeProject = summarizeProject;
-var output = summarizeProject("ng-analysis");
-console.log("Components");
-output.components.forEach(function (component) {
-    console.log(component.name);
-});
-console.log("Services");
-output.services.forEach(function (service) {
-    console.log(service.name);
-});
+summarizeProject("ng-analysis").then((output => {
+    console.log("Components");
+    output.components.forEach((component) => {
+        console.log(component.name);
+    });
+    console.log("Services");
+    output.services.forEach((service) => {
+        console.log(service.name);
+    });
+}));
+//# sourceMappingURL=analyser.js.map

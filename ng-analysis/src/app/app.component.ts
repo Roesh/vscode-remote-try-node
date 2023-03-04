@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { HeroService } from 'src/services/hero.service';
 
 @Component({
   selector: 'app-root',
@@ -7,4 +8,6 @@ import { Component } from '@angular/core';
 })
 export class AppComponent {
   title = 'ng-analysis';
+
+  constructor(private hero: HeroService){}
 }
