@@ -6,9 +6,11 @@
   "main": "server.js",
   "private": true,
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "new": "ng new"
   },
   "dependencies": {
+    "@angular/cli": "15.2.1",
     "express": "^4.16.1"
   }
 }
